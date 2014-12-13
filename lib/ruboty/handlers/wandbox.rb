@@ -21,7 +21,9 @@ module Ruboty
 				@compiler_list ||= lambda{
 					lst=JSON.parse Net::HTTP.get URI.parse @base_uri+'api/list.json'
 					Hash[*lst.flat_map{|e|
-						[e['name'],e['switches'].flat_map{|f|(f['options']||[]).map{|g|g['name']}}]
+						[e['name'],e['switches'].flat_map{|f|
+							f['options'] ? f['options'].map{|g|g['name']} : [f['name']]
+						}]
 					}]
 				}.call
 			end
