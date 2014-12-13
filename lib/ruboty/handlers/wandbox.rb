@@ -18,7 +18,18 @@ module Ruboty
 				@compiler_list=nil
 			end
 			def get_compiler_list
-				@compiler_list||=JSON.parse Net::HTTP.get URI.parse @base_uri+'api/list.json'
+				@compiler_list ||= lambda{
+					lst=JSON.parse Net::HTTP.get URI.parse @base_uri+'api/list.json'
+					Hash[*lst.flat_map{|e|
+						[e['name'],e['switches'].flat_map{|f|(f['options']||[]).map{|g|g['name']}}]
+					}]
+				}.call
+			end
+			def read_uri(uri)
+				return nil if !uri||uri.empty?
+				Kernel.open(uri){|f|
+					return f.read
+				}
 			end
 			def process(result)
 				#fixme
@@ -30,9 +41,7 @@ module Ruboty
 			on /wandbox submit (?<language>\S+) (?<source_uri>\S+) ?(?<input_uri>\S*)/, name: 'submit', description: 'send code via uri'
 			on /ideone view ?(?<id>\w*)/, name: 'view', description: 'view submission'
 			def languages(message)
-				message.reply get_compiler_list.map{|e|
-					e['name']+': '+e['switches'].map{|f|f['name']}*','+"\n"
-				}.join
+				message.reply get_compiler_list.map{|k,v|k+': '+v*','+"\n"}.join
 			end
 			def setinput(message)
 				#input_uri: 入力ファイル(空文字列ならクリア)
@@ -52,14 +61,14 @@ module Ruboty
 
 				options=message[:language].split(',')
 				lang=options.shift
-				compiler=get_compiler_list.find{|e|e['name']==lang}
-				if !compiler || options.any?{|opt|compiler['switches'].none?{|e|e['name']==opt}}
+				options=get_compiler_list[lang]
+				if !options || options.any?{|opt|compiler['switches'].none?{|e|e['name']==opt}}
 					message.reply '[Ruboty::Wandbox] invalid compiler name'
 				end
 				json={
 					compiler: lang,
 					code: read_uri(message[:source_uri]),
-					options: options,
+					options: options*',',
 					stdin: input,
 					save: false, #fixme
 				}
