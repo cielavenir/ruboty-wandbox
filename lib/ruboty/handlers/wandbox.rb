@@ -32,7 +32,7 @@ module Ruboty
 				}
 			end
 			def process(result)
-				#fixme
+				#fixme: status!=0を許容するなら、compile errorをどうやって捕捉するか?
 				result['program_output']
 			end
 
@@ -59,16 +59,19 @@ module Ruboty
 				#input_uri: 入力ファイル(空文字列ならsetinputの内容を使用)
 				input=message[:input_uri]&&!message[:input_uri].empty? ? read_uri(message[:input_uri]) : @input
 
-				options=message[:language].split(',')
-				lang=options.shift
-				options=get_compiler_list[lang]
-				if !options || options.any?{|opt|compiler['switches'].none?{|e|e['name']==opt}}
-					message.reply '[Ruboty::Wandbox] invalid compiler name'
+				lang_options=message[:language].split(',')
+				lang=lang_options.shift
+				begin
+					options=get_compiler_list[lang]
+					if !options || !(lang_options-options).empty?
+						message.reply '[Ruboty::Wandbox] invalid compiler name'
+						return
+					end
 				end
 				json={
 					compiler: lang,
 					code: read_uri(message[:source_uri]),
-					options: options*',',
+					options: lang_options*',',
 					stdin: input,
 					save: false, #fixme
 				}
@@ -77,7 +80,7 @@ module Ruboty
 					resp=http.post(uri.path,JSON.generate(json),{
 						'Content-Type'=>'application/json',
 					})
-					p JSON.parse(resp.body)
+					#p JSON.parse(resp.body)
 					message.reply process(JSON.parse(resp.body))
 				}
 			end
