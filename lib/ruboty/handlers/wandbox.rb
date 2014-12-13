@@ -39,7 +39,7 @@ module Ruboty
 			on /wandbox list/, name: 'languages', description: 'show compiler list'
 			on /wandbox setinput ?(?<input_uri>\S*)/, name: 'setinput', description: 'set input'
 			on /wandbox submit (?<language>\S+) (?<source_uri>\S+) ?(?<input_uri>\S*)/, name: 'submit', description: 'send code via uri'
-			on /ideone view ?(?<id>\w*)/, name: 'view', description: 'view submission'
+			on /wandbox view ?(?<id>\w*)/, name: 'view', description: 'view submission'
 			def languages(message)
 				message.reply get_compiler_list.map{|k,v|k+': '+v*','+"\n"}.join
 			end
@@ -80,12 +80,14 @@ module Ruboty
 					resp=http.post(uri.path,JSON.generate(json),{
 						'Content-Type'=>'application/json',
 					})
-					#p JSON.parse(resp.body)
-					message.reply process(JSON.parse(resp.body))
+					json=JSON.parse(resp.body)
+					#p json
+					#@current_submission=json['permlink']
+					message.reply process(json)
 				}
 			end
 			def view(message)
-				#id: wandbox ID(空文字列なら直前のsubmitで返されたIDを使用)
+				#id: wandbox ID(空文字列なら直前のsubmitで返されたIDを使用 ※現在permlinkを保存しない設定なので特に意味は無い)
 				submission=message[:id]&&!message[:id].empty? ? message[:id] : @current_submission
 				resp=JSON.parse Net::HTTP.get URI.parse @base_uri+'api/permlink/'+submission
 				message.reply process(resp['result'])
